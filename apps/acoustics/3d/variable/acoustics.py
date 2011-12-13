@@ -29,13 +29,6 @@ def acoustics3D(iplot=False,htmlplot=False,use_petsc=False,outdir='./_output',so
     solver.bc_lower[2]=pyclaw.BC.reflecting
     solver.bc_upper[2]=pyclaw.BC.periodic
 
-    solver.aux_bc_lower[0]=pyclaw.BC.reflecting
-    solver.aux_bc_upper[0]=pyclaw.BC.periodic
-    solver.aux_bc_lower[1]=pyclaw.BC.reflecting
-    solver.aux_bc_upper[1]=pyclaw.BC.periodic
-    solver.aux_bc_lower[2]=pyclaw.BC.reflecting
-    solver.aux_bc_upper[2]=pyclaw.BC.periodic
-
     # Initialize grid
     mx=30; my=30; mz=30
     x = pyclaw.Dimension('x',-1.0,1.0,mx)

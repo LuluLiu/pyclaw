@@ -25,13 +25,6 @@ def acoustics3D(iplot=False,htmlplot=False,use_petsc=False,outdir='./_output',so
     solver.bc_lower[2]=pyclaw.BC.periodic
     solver.bc_upper[2]=pyclaw.BC.periodic
 
-    solver.aux_bc_lower[0]=pyclaw.BC.periodic
-    solver.aux_bc_upper[0]=pyclaw.BC.periodic
-    solver.aux_bc_lower[1]=pyclaw.BC.periodic
-    solver.aux_bc_upper[1]=pyclaw.BC.periodic
-    solver.aux_bc_lower[2]=pyclaw.BC.periodic
-    solver.aux_bc_upper[2]=pyclaw.BC.periodic
-
     if test=='hom':
         solver.dim_split=True
         mx=256; my=4; mz=4
@@ -42,9 +35,6 @@ def acoustics3D(iplot=False,htmlplot=False,use_petsc=False,outdir='./_output',so
         solver.bc_lower[0]    =pyclaw.BC.reflecting
         solver.bc_lower[1]    =pyclaw.BC.reflecting
         solver.bc_lower[2]    =pyclaw.BC.reflecting
-        solver.aux_bc_lower[0]=pyclaw.BC.reflecting
-        solver.aux_bc_lower[1]=pyclaw.BC.reflecting
-        solver.aux_bc_lower[2]=pyclaw.BC.reflecting
         mx=30; my=30; mz=30
         zr = 2.0  # Impedance in right half
         cr = 2.0  # Sound speed in right half

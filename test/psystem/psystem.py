@@ -161,10 +161,6 @@ def psystem2D(use_petsc=True,solver_type='classic',iplot=False,htmlplot=False):
     solver.bc_upper[0]=bc_x_upper
     solver.bc_lower[1]=bc_y_lower
     solver.bc_upper[1]=bc_y_upper
-    solver.aux_bc_lower[0]=bc_x_lower
-    solver.aux_bc_upper[0]=bc_x_upper
-    solver.aux_bc_lower[1]=bc_y_lower
-    solver.aux_bc_upper[1]=bc_y_upper
 
     solver.fwave = True
     solver.cfl_max = 1.0

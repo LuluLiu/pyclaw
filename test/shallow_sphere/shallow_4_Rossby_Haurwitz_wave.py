@@ -289,17 +289,33 @@ def qinit(state,mx,my):
             state.q[3,i,j] = state.q[0,i,j]*Uout[2] 
 
 
-def qbc_lower_y(state,dim,t,qbc,mbc):
+def bc_lower_y(state,dim,t,qbc,auxbc,mbc):
     """
     Impose periodic boundary condition to q at the bottom boundary for the 
     sphere. This function does not work in parallel.
     """
+    grid = state.grid
+    
     for j in range(mbc):
         qbc1D = np.copy(qbc[:,:,2*mbc-1-j])
         qbc[:,:,j] = qbc1D[:,::-1]
+        
+    # Get parameters and variables that have to be passed to the fortran src2
+    # routine.
+    mx, my = grid.ng[0], grid.ng[1]
+    xlower, ylower = grid.lower[0], grid.lower[1]
+    dx, dy = grid.d[0],grid.d[1]
+
+    # Import shared object (.so)
+    import problem
+    
+    # Impose BC
+    auxtemp = auxbc.copy()
+    auxtemp = problem.setaux(mx,my,mbc,mx,my,xlower,ylower,dx,dy,auxtemp,Rsphere)
+    auxbc[:,:,:mbc] = auxtemp[:,:,:mbc]
 
 
-def qbc_upper_y(state,dim,t,qbc,mbc):
+def bc_upper_y(state,dim,t,qbc,auxbc,mbc):
     """
     Impose periodic boundary condition to q at the top boundary for the sphere.
     This function does not work in parallel.
@@ -308,33 +324,7 @@ def qbc_upper_y(state,dim,t,qbc,mbc):
     for j in range(mbc):
         qbc1D = np.copy(qbc[:,:,my+mbc-1-j])
         qbc[:,:,my+mbc+j] = qbc1D[:,::-1]
-
-
-def auxbc_lower_y(state,dim,t,auxbc,mbc):
-    """
-    Impose periodic boundary condition to aux at the bottom boundary for the 
-    sphere.
-    """
-    # Import shared object (.so)
-    import problem
-    grid = state.grid
-
-    # Get parameters and variables that have to be passed to the fortran src2
-    # routine.
-    mx, my = grid.ng[0], grid.ng[1]
-    xlower, ylower = grid.lower[0], grid.lower[1]
-    dx, dy = grid.d[0],grid.d[1]
-
-    # Impose BC
-    auxtemp = auxbc.copy()
-    auxtemp = problem.setaux(mx,my,mbc,mx,my,xlower,ylower,dx,dy,auxtemp,Rsphere)
-    auxbc[:,:,:mbc] = auxtemp[:,:,:mbc]
-
-def auxbc_upper_y(state,dim,t,auxbc,mbc):
-    """
-    Impose periodic boundary condition to aux at the top boundary for the 
-    sphere. 
-    """
+        
     # Import shared object (.so)
     import problem
     grid = state.grid
@@ -370,17 +360,8 @@ def shallow_4_Rossby_Haurwitz(iplot=0,htmlplot=False,outdir='./_output'):
     solver.bc_lower[1] = pyclaw.BC.custom  # Custom BC for sphere
     solver.bc_upper[1] = pyclaw.BC.custom  # Custom BC for sphere
 
-    solver.user_bc_lower = qbc_lower_y
-    solver.user_bc_upper = qbc_upper_y
-
-    # Auxiliary array
-    solver.aux_bc_lower[0] = pyclaw.BC.periodic
-    solver.aux_bc_upper[0] = pyclaw.BC.periodic
-    solver.aux_bc_lower[1] = pyclaw.BC.custom  # Custom BC for sphere
-    solver.aux_bc_upper[1] = pyclaw.BC.custom  # Custom BC for sphere
-
-    solver.user_aux_bc_lower = auxbc_lower_y
-    solver.user_aux_bc_upper = auxbc_upper_y
+    solver.user_bc_lower = bc_lower_y
+    solver.user_bc_upper = bc_upper_y
 
 
     # Dimensional splitting ?

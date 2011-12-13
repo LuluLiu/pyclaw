@@ -161,15 +161,17 @@ class State(object):
             for global_var_name,global_var_value in self.aux_global.iteritems(): 
                 setattr(fortran_module.cparam,global_var_name,global_var_value)
 
+    # ========================================================================
+    #  Boundary condition array routines 
+    # ========================================================================
     def set_mbc(self,mbc):
         """
         Virtual routine (does nothing)
         """
         pass
-
-
+        
     def set_q_from_qbc(self,mbc,qbc):
-        """
+        r"""
         Set the value of q using the array qbc. for PetSolver, this
         involves setting qbc as the local vector array then perform
         a local to global communication. 
@@ -184,18 +186,34 @@ class State(object):
             self.q = qbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc]
         else:
             raise Exception("Assumption (1 <= ndim <= 3) violated.")
-
-    def get_qbc_from_q(self,mbc,whichvec,qbc):
+    
+    def set_aux_from_auxbc(self,mbc,auxbc):
+        r"""
+        Set the value of aux using the array auxbc.  For PetSolver, this
+        involves setting auxbc as the local vector array then performing
+        a local to global communication.  Does nothing *if maux <= 0*.
         """
-        Fills in the interior of qbc (local vector) by copying q (global vector) to it.
+        
+        if self.maux > 0:
+            grid = self.grid
+            if grid.ndim == 1:
+                self.aux = auxbc[:,mbc:-mbc]
+            elif grid.ndim == 2:
+                self.aux = auxbc[:,mbc:-mbc,mbc:-mbc]
+            elif grid.ndim == 3:
+                self.aux = auxbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc]
+            else:
+                raise Exception("Assumption (1 <= ndim <= 3) violated.")
+
+    def set_qbc_from_q(self,mbc,qbc):
+        r"""
+        Fills in the interior of qbc (local vector) by copying q 
+        (global vector) to it.
         """
         ndim = self.grid.ndim
         
-        if whichvec == 'q':
-            q    = self.q
-        elif whichvec == 'aux':
-            q    = self.aux
-
+        q = self.q
+        
         if ndim == 1:
             qbc[:,mbc:-mbc] = q
         elif ndim == 2:
@@ -204,6 +222,25 @@ class State(object):
             qbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc] = q
 
         return qbc
+        
+    def set_auxbc_from_aux(self,mbc,auxbc):
+        r"""
+        Fills in the interior of auxbc (local vector) by copying aux 
+        (global vector) to it.  Does nothing *if maux <= 0*.
+        """
+
+        if self.maux > 0:
+            ndim = self.grid.ndim
+            aux = self.aux
+
+            if ndim == 1:
+                auxbc[:,mbc:-mbc] = aux
+            elif ndim == 2:
+                auxbc[:,mbc:-mbc,mbc:-mbc] = aux
+            elif ndim == 3:
+                auxbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc] = aux
+
+        return auxbc
 
     # ========== Copy functionality ==========================================
     def __copy__(self):

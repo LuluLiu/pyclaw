@@ -84,9 +84,10 @@ def setaux(state,mx,my):
     return aux
 
 
-def velocities_upper(state,dim,t,auxbc,mbc):
+def velocities_upper(state,dim,t,qbc,auxbc,mbc):
     """
-    Set the velocities for the ghost cells outside the outer radius of the annulus.
+    Set the velocities for the ghost cells outside the outer radius of the 
+    annulus.  The qbc array is zero-order extrapolated.
     """
     from mapc2p import mapc2p
 
@@ -104,14 +105,17 @@ def velocities_upper(state,dim,t,auxbc,mbc):
         xp,yp = mapc2p(xc,yc)
 
         auxbc[:,-mbc:,:] = velocities_capa(xp,yp,dxc,dyc)
+        for i in xrange(mbc):
+            qbc[:,-i-1,...] = qbc[:,-mbc-1,...] 
 
     else:
         raise Exception('Custum BC for this boundary is not appropriate!')
 
 
-def velocities_lower(state,dim,t,auxbc,mbc):
+def velocities_lower(state,dim,t,qbc,auxbc,mbc):
     """
-    Set the velocities for the ghost cells outside the inner radius of the annulus.
+    Set the velocities for the ghost cells outside the inner radius of the 
+    annulus.  The qbc array is zero-order extrapolated.
     """
     from mapc2p import mapc2p
 
@@ -120,6 +124,8 @@ def velocities_lower(state,dim,t,auxbc,mbc):
     dxc = grid.d[0]
     dyc = grid.d[1]
 
+    # This is not strictly a necessary check but should raise an exception if
+    # the wrong dimension is passed into here
     if dim == grid.dimensions[0]:
         xc1d = grid.lower[0]+dxc*(np.arange(mbc+1)-mbc)
         yc1d = grid.lower[1]+dyc*(np.arange(my+2*mbc+1)-mbc)
@@ -128,6 +134,8 @@ def velocities_lower(state,dim,t,auxbc,mbc):
         xp,yp = mapc2p(xc,yc)
 
         auxbc[:,0:mbc,:] = velocities_capa(xp,yp,dxc,dyc)
+        for i in xrange(mbc):
+            qbc[:,i,...] = qbc[:,mbc,...]
 
     else:
         raise Exception('Custum BC for this boundary is not appropriate!')
@@ -198,18 +206,12 @@ def advection_annulus(use_petsc=False,iplot=0,htmlplot=False,outdir='./_output',
     elif solver_type == 'sharpclaw':
         solver = pyclaw.SharpClawSolver2D()
 
-
-    solver.bc_lower[0] = pyclaw.BC.outflow
-    solver.bc_upper[0] = pyclaw.BC.outflow
+    solver.bc_lower[0] = pyclaw.BC.custom
+    solver.bc_upper[0] = pyclaw.BC.custom
+    solver.user_bc_lower = velocities_lower
+    solver.user_bc_upper = velocities_upper
     solver.bc_lower[1] = pyclaw.BC.periodic
     solver.bc_upper[1] = pyclaw.BC.periodic
-
-    solver.aux_bc_lower[0] = pyclaw.BC.custom
-    solver.aux_bc_upper[0] = pyclaw.BC.custom
-    solver.user_aux_bc_lower = velocities_lower
-    solver.user_aux_bc_upper = velocities_upper
-    solver.aux_bc_lower[1] = pyclaw.BC.periodic
-    solver.aux_bc_upper[1] = pyclaw.BC.periodic
 
     solver.mwaves = 1
 

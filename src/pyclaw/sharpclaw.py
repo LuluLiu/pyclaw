@@ -372,7 +372,7 @@ class SharpClawSolver1D(SharpClawSolver):
     
         import numpy as np
 
-        self.apply_q_bcs(state)
+        self.apply_bcs(state)
         q = self.qbc 
 
         grid = state.grid
@@ -543,7 +543,7 @@ class SharpClawSolver2D(SharpClawSolver):
     
         import numpy as np
 
-        self.apply_q_bcs(state)
+        self.apply_bcs(state)
         q = self.qbc 
 
         grid = state.grid

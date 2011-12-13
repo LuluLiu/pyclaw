@@ -309,7 +309,7 @@ class ClawSolver1D(ClawSolver):
         state = solution.states[0]
         grid = state.grid
 
-        self.apply_q_bcs(state)
+        self.apply_bcs(state)
             
         meqn,mbc = state.meqn,self.mbc
           
@@ -404,6 +404,7 @@ class ClawSolver1D(ClawSolver):
 
         self.cfl.update_global_max(cfl)
         state.set_q_from_qbc(mbc,self.qbc)
+        state.set_aux_from_auxbc(mbc,self.auxbc)
    
 
 # ============================================================================
@@ -525,7 +526,7 @@ class ClawSolver2D(ClawSolver):
             mx,my = grid.ng
             maxm = max(mx,my)
             
-            self.apply_q_bcs(state)
+            self.apply_bcs(state)
             qnew = self.qbc
             qold = qnew.copy('F')
             
@@ -553,6 +554,7 @@ class ClawSolver2D(ClawSolver):
 
             self.cfl.update_global_max(cfl)
             state.set_q_from_qbc(self.mbc,self.qbc)
+            state.set_aux_from_auxbc(self.mbc,self.auxbc)
 
         else:
             raise NotImplementedError("No python implementation for step_hyperbolic in 2D.")
@@ -665,7 +667,7 @@ class ClawSolver3D(ClawSolver):
             mx,my,mz = grid.ng
             maxm = max(mx,my,mz)
             
-            self.apply_q_bcs(state)
+            self.apply_bcs(state)
             qnew = self.qbc
             qold = qnew.copy('F')
             
@@ -697,6 +699,7 @@ class ClawSolver3D(ClawSolver):
 
             self.cfl.update_global_max(cfl)
             state.set_q_from_qbc(self.mbc,self.qbc)
+            state.set_aux_from_auxbc(self.mbc,self.auxbc)
 
         else:
             raise NotImplementedError("No python implementation for step_hyperbolic in 3D.")

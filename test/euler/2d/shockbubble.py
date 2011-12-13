@@ -38,7 +38,7 @@ def auxinit(state):
     for j,ycoord in enumerate(y):
         state.aux[0,:,j] = ycoord
 
-def shockbc(state,dim,t,qbc,mbc):
+def shockbc(state,dim,t,qbc,auxbc,mbc):
     """
     Incoming shock at left boundary.
     """
@@ -139,11 +139,6 @@ def shockbubble(use_petsc=False,iplot=False,htmlplot=False):
     solver.bc_upper[0]=pyclaw.BC.outflow
     solver.bc_lower[1]=pyclaw.BC.reflecting
     solver.bc_upper[1]=pyclaw.BC.outflow
-    #Aux variable in ghost cells doesn't matter
-    solver.aux_bc_lower[0]=pyclaw.BC.outflow
-    solver.aux_bc_upper[0]=pyclaw.BC.outflow
-    solver.aux_bc_lower[1]=pyclaw.BC.outflow
-    solver.aux_bc_upper[1]=pyclaw.BC.outflow
 
     claw = pyclaw.Controller()
     claw.keep_copy = True
