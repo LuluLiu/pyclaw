@@ -195,6 +195,9 @@ class Solver(object):
         r"""Array to hold ghost cell values of aux array.  This gets passed to
         the Fortran code."""
 
+        self.auxbc        = None
+        r"""(ndarray) - Array to hold ghost cell values of the aux array."""
+
         super(Solver,self).__init__()
 
 
@@ -301,14 +304,14 @@ class Solver(object):
         This is typically called by solver.setup().
         """
         import numpy as np
-        qbc_dim = [n+2*self.mbc for n in state.grid.ng]
+        bc_dim = [n+2*self.mbc for n in state.grid.ng]
         qbc_dim.insert(0,state.meqn)
         self.qbc = np.zeros(qbc_dim,order='F')
-        
+
         auxbc_dim = [n+2*self.mbc for n in state.grid.ng]
         auxbc_dim.insert(0,state.maux)
         self.auxbc = np.empty(auxbc_dim,order='F')
-
+        
     def apply_bcs(self,state):
         r"""
         Fills in solver.qbc and solver.auxbc including ghost cells

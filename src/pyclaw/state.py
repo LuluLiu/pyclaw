@@ -177,12 +177,13 @@ class State(object):
         a local to global communication. 
         """
         
-        grid = self.grid
-        if grid.ndim == 1:
+        ndim = self.grid.ndim
+
+        if ndim == 1:
             self.q = qbc[:,mbc:-mbc]
-        elif grid.ndim == 2:
+        elif ndim == 2:
             self.q = qbc[:,mbc:-mbc,mbc:-mbc]
-        elif grid.ndim == 3:
+        elif ndim == 3:
             self.q = qbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc]
         else:
             raise Exception("Assumption (1 <= ndim <= 3) violated.")
@@ -220,8 +221,8 @@ class State(object):
             qbc[:,mbc:-mbc,mbc:-mbc] = q
         elif ndim == 3:
             qbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc] = q
-
-        return qbc
+        else:
+            raise Exception("Assumption (1 <= ndim <= 3) violated.")
         
     def set_auxbc_from_aux(self,mbc,auxbc):
         r"""
@@ -239,8 +240,6 @@ class State(object):
                 auxbc[:,mbc:-mbc,mbc:-mbc] = aux
             elif ndim == 3:
                 auxbc[:,mbc:-mbc,mbc:-mbc,mbc:-mbc] = aux
-
-        return auxbc
 
     # ========== Copy functionality ==========================================
     def __copy__(self):
