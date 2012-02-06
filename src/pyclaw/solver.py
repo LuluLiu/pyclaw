@@ -274,6 +274,7 @@ class Solver(object):
         If we create a MethodOfLinesSolver subclass, this should be moved there.
         """
         if self.time_integrator   == 'FE':  nregisters=1
+        elif self.time_integrator == 'Implicit':  nregisters=2
         elif self.time_integrator == 'DWSSP22':  nregisters=2
         elif self.time_integrator == 'DWSSP105':  nregisters=10
         elif self.time_integrator == 'SSP33':  nregisters=2

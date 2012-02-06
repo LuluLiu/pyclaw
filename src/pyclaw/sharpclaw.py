@@ -7,6 +7,9 @@ Module containing SharpClaw solvers for PyClaw/PetClaw
 """
 # Solver superclass
 from pyclaw.solver import Solver, CFLError
+from scipy.optimize import fsolve
+from scipy.optimize.nonlin import newton_krylov
+import numpy as np
 
 # Reconstructor
 try:
@@ -63,6 +66,7 @@ class SharpClawSolver(Solver):
         self._default_attr_values['fwave'] = False
         self._default_attr_values['cfl_desired'] = 2.45
         self._default_attr_values['cfl_max'] = 2.5
+        self._default_attr_values['r'] = 3.8
         self._default_attr_values['dq_src'] = None
         
         # This attribute is passed to the fortran flux routines to handle
@@ -93,7 +97,8 @@ class SharpClawSolver(Solver):
             if self.time_integrator=='FE':
                 deltaq = self.dq(state)
                 state.q += deltaq
-     
+
+
             elif self.time_integrator=='DWSSP22':
                 deltaq = self.dq(state)
                 # Downwind
@@ -234,10 +239,34 @@ class SharpClawSolver(Solver):
                 state.q = self._rk_stages[0].q + 0.5*deltaq
 
 
+            elif self.time_integrator=='Implicit':
+
+                mx = state.grid.ng[0]
+                meqn = state.meqn
+                
+                # Set initial guess for the nonlinear solver
+                Yguess = self.guess(state) 
+                #state.q[0,:]=Yguess[:meqn*mx]
+                #Yguess=np.hstack((state.q[0,:],state.q[0,:]))
+                                
+
+                # Define lambda function.
+                nonlinearFun = lambda y : self.nonlinearFunctionDwrk(y,state)
+                Ynew,info,ier,msg = fsolve(nonlinearFun,Yguess,full_output=1)
+                                
+                self._rk_stages[0].q = Ynew[meqn*mx:]
+                self._rk_stages[0].t = state.t+(self.r-1.)/self.r*self.dt
+                self.upwind = 1
+                deltaq2 = self.dq(self._rk_stages[0])
+                state.q=self._rk_stages[0].q + 1./self.r*deltaq2
+
+
+
             elif self.time_integrator=='SSP104':
                 s1=self._rk_stages[0]
                 s2=self._rk_stages[1]
                 s1.q = state.q.copy()
+              
 
                 deltaq=self.dq(state)
                 s1.q = state.q + deltaq/6.
@@ -263,8 +292,77 @@ class SharpClawSolver(Solver):
                 raise Exception('Unrecognized time integrator')
         except CFLError:
             return False
+################################################################################
+################################################################################
+
+    def guess(self,state):
+        
+        import copy
+                          
+        s1=self._rk_stages[0]
+        s1=copy.deepcopy(state)
+        s1.t= state.t+ (1. - 2./self.r)*self.dt
+
+        # Define lambda function.
+        nonlinearFun = lambda y : self.nonlinearFunctionBEuler(y,s1)        
+        y1guess,info,ier,msg = fsolve(nonlinearFun,s1.q[0,:],full_output=1) 
+        
+
+        s1.q[0,:]=y1guess[:]
+        s1.t=state.t + (1.-1./self.r)*self.dt
+        
+        #Define lambda function.
+        nonlinearFun = lambda y : self.nonlinearFunctionBEuler(y,s1)
+        y2guess,info,ier,msg = fsolve(nonlinearFun,s1.q[0,:],full_output=1)
 
 
+        Yguess=np.hstack((y1guess,y2guess))
+        return Yguess
+
+    def nonlinearFunctionBEuler(self,y,state):
+        r"""
+        Computes the nonlinear function for the backward Euler scheme.
+        """
+        self.upwind = 1
+        deltaq = self.dq(state)
+
+
+        # Return the nonlinear vector-valued function
+        return y[:]-deltaq[0,:]-state.q[0,:]
+
+    
+    def nonlinearFunctionDwrk(self,y,state):
+        r"""
+        Computes the nonlinear function for the downwind scheme.
+        """
+        mx = state.grid.ng[0]
+        meqn=state.meqn
+        r=self.r
+
+        self._rk_stages[0].q = y[0:meqn*mx]
+        self._rk_stages[0].t = state.t+(r-2.)/r*self.dt
+        self.upwind = 1
+        deltaq1 = self.dq(self._rk_stages[0])
+
+        self._rk_stages[0].q = y[meqn*mx:]
+        self._rk_stages[0].t = state.t+(r-1.)/r*self.dt
+        self.upwind = 0
+        deltaq_DW2 = -self.dq(self._rk_stages[0])
+
+
+        rhs=y.copy()
+        rhs[0:meqn*mx] = 2./(r*(r-2))*state.q[0,:] + (2./r)*(y[0:meqn*mx] + deltaq1/r) \
+                  + (r**2-4*r+2)/(r*(r-2))*(y[meqn*mx:] + deltaq_DW2/r)
+        rhs[meqn*mx:] = y[0:meqn*mx] + deltaq1/r
+
+        return y-rhs
+
+
+
+
+
+#############################################################################
+#############################################################################
     def set_mthlim(self):
         self.mthlim = self.limiters
         if not isinstance(self.limiters,list): self.mthlim=[self.mthlim]
