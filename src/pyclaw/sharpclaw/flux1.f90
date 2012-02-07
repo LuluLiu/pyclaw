@@ -1,5 +1,5 @@
 ! ===================================================================
-subroutine flux1(q1d,dq1d,aux,dt,cfl,t,ixy,num_aux,num_eqn,mx,num_ghost,maxnx)
+subroutine flux1(q1d,dq1d,aux,dt,cfl,t,ixy,num_aux,num_eqn,mx,num_ghost,maxnx,upwind)
 ! ===================================================================
 !
 !     # Evaluate (delta t) * dq(t)/dt
@@ -154,10 +154,18 @@ subroutine flux1(q1d,dq1d,aux,dt,cfl,t,ixy,num_aux,num_eqn,mx,num_ghost,maxnx)
         ! for equations not in conservation form.  It is conservative if
         ! adq = f(qr(i)) - f(ql(i)).
 
-        forall (i=1:mx, m=1:num_eqn)
-            dq1d(m,i) = dq1d(m,i) - dtdx(i)*(apdq(m,i) + &
+        if(upwind.gt.0) then
+            forall (i=1:mx, m=1:num_eqn)
+                dq1d(m,i) = dq1d(m,i) - dtdx(i)*(apdq(m,i) + &
                             amdq2(m,i) + amdq(m,i+1))
-        end forall
+            end forall
+
+        else
+            forall (i=1:mx, m=1:num_eqn)
+                dq1d(m,i) = dq1d(m,i) - dtdx(i)*(apdq(m,i+1) + &
+                            amdq2(m,i) + amdq(m,i))
+            end forall
+        endif
 
     else
         ! Or we can just swap things around and use the usual Riemann solver
@@ -186,10 +194,17 @@ subroutine flux1(q1d,dq1d,aux,dt,cfl,t,ixy,num_aux,num_eqn,mx,num_ghost,maxnx)
         call rp1(maxnx,num_eqn,num_waves,num_ghost,mx,ql,qr, &
                  auxl,auxr,wave,s,amdq2,apdq2,num_aux)
 
-        forall(i=1:mx, m=1:num_eqn)
-            dq1d(m,i) = dq1d(m,i)-dtdx(i)*(amdq(m,i+1)+ &
-                        apdq(m,i)+amdq2(m,i)+apdq2(m,i))
-        end forall
+        if(upwind.gt.0) then
+            forall(i=1:mx, m=1:num_eqn)
+                dq1d(m,i) = dq1d(m,i)-dtdx(i)*(amdq(m,i+1)+ &
+                            apdq(m,i)+amdq2(m,i)+apdq2(m,i))
+            end forall
+        else
+            forall(i=1:mx, m=1:num_eqn)
+                dq1d(m,i) = dq1d(m,i)-dtdx(i)*(amdq(m,i)+ &
+                            apdq(m,i+1)+amdq2(m,i)+apdq2(m,i))
+            end forall
+        endif
     endif
 
 end subroutine flux1
