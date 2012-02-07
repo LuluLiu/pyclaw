@@ -12,6 +12,7 @@ def advection(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=Fal
     #===========================================================================
     import numpy as np
 
+
     if use_petsc:
         import petclaw as pyclaw
     else:
