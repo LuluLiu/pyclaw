@@ -25,6 +25,7 @@ def advection(kernel_language='Python',iplot=False,htmlplot=False,use_petsc=Fals
     solver.bc_lower[0] = 2
     solver.bc_upper[0] = 2
 
+
     x = pyclaw.Dimension('x',0.0,1.0,100)
     domain = pyclaw.Domain(x)
     num_eqn = 1
