@@ -173,6 +173,22 @@ class SharpClawSolver(Solver):
                 deltaq=self.dq(self._rk_stages[0])
                 state.q = 1./3.*state.q + 2./3.*(self._rk_stages[0].q+deltaq)
 
+
+            elif self.time_integrator=='SSP43':
+                deltaq=self.dq(state)
+                self._rk_stages[0].q = state.q+0.5*deltaq
+                self._rk_stages[0].t = state.t+0.5*self.dt
+                deltaq = self.dq(self._rk_stages[0])
+                self._rk_stages[0].q = self._rk_stages[0].q + 0.5*deltaq
+                self._rk_stages[0].t = state.t+self.dt
+                deltaq = self.dq(self._rk_stages[0])
+                self._rk_stages[0].q = 2./3.*state.q + 1./3.*(self._rk_stages[0].q+0.5*deltaq)
+                self._rk_stages[0].t = state.t+0.5*self.dt
+                deltaq = self.dq(self._rk_stages[0])
+                state.q = self._rk_stages[0].q + 0.5*deltaq
+
+
+
             elif self.time_integrator=='SSP104':
                 s1=self._rk_stages[0]
                 s2=self._rk_stages[1]
@@ -288,8 +304,10 @@ class SharpClawSolver(Solver):
         """
         if self.time_integrator   == 'Euler':  nregisters=1
         elif self.time_integrator == 'SSP33':  nregisters=2
+        elif self.time_integrator == 'SSP43':  nregisters=2
         elif self.time_integrator == 'SSP104': nregisters=3
- 
+        
+
         state = solution.states[0]
         # use the same class constructor as the solution for the Runge Kutta stages
         State = type(state)
