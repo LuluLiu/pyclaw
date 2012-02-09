@@ -145,7 +145,7 @@ class SharpClawSolver(Solver):
         self._method = None
         self._rk_stages = None
         self.upwind = 1
-        self.r = 4
+        self.r = 3.8
         
         # Call general initialization function
         super(SharpClawSolver,self).__init__()
@@ -194,7 +194,7 @@ class SharpClawSolver(Solver):
                 self._rk_stages[0].t = state.t+0.5*self.dt
                 deltaq=self.dq(self._rk_stages[0])
                 state.q = 1./3.*state.q + 2./3.*(self._rk_stages[0].q+deltaq)
-
+                
 
             elif self.time_integrator=='SSP43':
                 deltaq=self.dq(state)
@@ -214,11 +214,10 @@ class SharpClawSolver(Solver):
                 mx = state.grid.num_cells[0]
                 num_eqn = state.num_eqn
                 
+                
                 # Set initial guess for the nonlinear solver
                 Yguess = self.guess(state) 
-                #state.q[0,:]=Yguess[:num_eqn*mx]
-                #Yguess=np.hstack((state.q[0,:],state.q[0,:]))
-                                
+                            
 
                 # Define lambda function.
                 nonlinearFun = lambda y : self.nonlinearFunctionDwrk(y,state)
@@ -227,8 +226,19 @@ class SharpClawSolver(Solver):
                 self._rk_stages[0].q = Ynew[num_eqn*mx:]
                 self._rk_stages[0].t = state.t+(self.r-1.)/self.r*self.dt
                 self.upwind = 1
-                deltaq = self.dq(self._rk_stages[0])
-                state.q=self._rk_stages[0].q + 1./self.r*deltaq
+                deltaq2 = self.dq(self._rk_stages[0])
+                state.q=self._rk_stages[0].q + 1./self.r*deltaq2
+
+
+            elif self.time_integrator=='BEuler':
+
+               
+                # Define lambda function.
+                nonlinearFun = lambda y : self.nonlinearFunctionBEuler(y,state)
+                Ynew,info,ier,msg = fsolve(nonlinearFun,state.q[0,:],full_output=1)
+                                
+                state.q[:]=Ynew[:]
+
 
 
             elif self.time_integrator=='SSP104':
@@ -256,6 +266,7 @@ class SharpClawSolver(Solver):
 
                 deltaq = self.dq(s1)
                 state.q = s2.q + 0.6 * s1.q + 0.1 * deltaq
+                
 
             elif self.time_integrator=='DWSSP105':
                 deltaq = self.dq(state)
@@ -412,18 +423,18 @@ class SharpClawSolver(Solver):
         self._rk_stages[0].q = y[0:num_eqn*mx]
         self._rk_stages[0].t = state.t+(r-2.)/r*self.dt
         self.upwind = 1
-        deltaq = self.dq(self._rk_stages[0])
+        deltaq1 = self.dq(self._rk_stages[0])
 
         self._rk_stages[0].q = y[num_eqn*mx:]
         self._rk_stages[0].t = state.t+(r-1.)/r*self.dt
         self.upwind = 0
-        deltaq_DW = -self.dq(self._rk_stages[0])
+        deltaq_DW2 = -self.dq(self._rk_stages[0])
 
 
         rhs=y.copy()
-        rhs[0:num_eqn*mx] = 2./(r*(r-2))*state.q[0,:] + (2./r)*(y[0:num_eqn*mx] + deltaq/r) \
-                  + (r**2-4*r+2)/(r*(r-2))*(y[num_eqn*mx:] + deltaq_DW/r)
-        rhs[num_eqn*mx:] = y[0:num_eqn*mx] + deltaq/r
+        rhs[0:num_eqn*mx] = 2./(r*(r-2))*state.q[0,:] + (2./r)*(y[0:num_eqn*mx] + deltaq1/r) \
+                  + (r**2-4*r+2)/(r*(r-2))*(y[num_eqn*mx:] + deltaq_DW2/r)
+        rhs[num_eqn*mx:] = y[0:num_eqn*mx] + deltaq1/r
 
         return y-rhs
 
@@ -524,6 +535,7 @@ class SharpClawSolver(Solver):
         elif self.time_integrator == 'SSP104': nregisters=3
         elif self.time_integrator == 'DWSSP105': nregisters=10
         elif self.time_integrator == 'Implicit': nregisters=2
+        elif self.time_integrator == 'BEuler': nregisters=2
 
         
 
