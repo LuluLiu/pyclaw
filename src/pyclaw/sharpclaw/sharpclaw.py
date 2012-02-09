@@ -8,6 +8,11 @@ Module containing SharpClaw solvers for PyClaw/PetClaw
 # Solver superclass
 from pyclaw.solver import Solver, CFLError
 
+from pyclaw.solver import Solver, CFLError
+from scipy.optimize import fsolve
+from scipy.optimize.nonlin import newton_krylov
+import numpy as np
+
 # Reconstructor
 try:
     # load c-based WENO reconstructor (PyWENO)
@@ -140,6 +145,7 @@ class SharpClawSolver(Solver):
         self._method = None
         self._rk_stages = None
         self.upwind = 1
+        self.r = 4
         
         # Call general initialization function
         super(SharpClawSolver,self).__init__()
@@ -203,6 +209,26 @@ class SharpClawSolver(Solver):
                 deltaq = self.dq(self._rk_stages[0])
                 state.q = self._rk_stages[0].q + 0.5*deltaq
 
+            elif self.time_integrator=='Implicit':
+
+                mx = state.grid.num_cells[0]
+                num_eqn = state.num_eqn
+                
+                # Set initial guess for the nonlinear solver
+                Yguess = self.guess(state) 
+                #state.q[0,:]=Yguess[:num_eqn*mx]
+                #Yguess=np.hstack((state.q[0,:],state.q[0,:]))
+                                
+
+                # Define lambda function.
+                nonlinearFun = lambda y : self.nonlinearFunctionDwrk(y,state)
+                Ynew,info,ier,msg = fsolve(nonlinearFun,Yguess,full_output=1)
+                                
+                self._rk_stages[0].q = Ynew[num_eqn*mx:]
+                self._rk_stages[0].t = state.t+(self.r-1.)/self.r*self.dt
+                self.upwind = 1
+                deltaq = self.dq(self._rk_stages[0])
+                state.q=self._rk_stages[0].q + 1./self.r*deltaq
 
 
             elif self.time_integrator=='SSP104':
@@ -336,6 +362,78 @@ class SharpClawSolver(Solver):
         except CFLError:
             return False
 
+################################################################################
+################################################################################
+
+    def guess(self,state):
+        
+        import copy
+                          
+        s1=self._rk_stages[0]
+        s1=copy.deepcopy(state)
+        s1.t= state.t+ (1. - 2./self.r)*self.dt
+
+        # Define lambda function.
+        nonlinearFun = lambda y : self.nonlinearFunctionBEuler(y,s1)        
+        y1guess,info,ier,msg = fsolve(nonlinearFun,s1.q[0,:],full_output=1) 
+        
+
+        s1.q[0,:]=y1guess[:]
+        s1.t=state.t + (1.-1./self.r)*self.dt
+        
+        #Define lambda function.
+        nonlinearFun = lambda y : self.nonlinearFunctionBEuler(y,s1)
+        y2guess,info,ier,msg = fsolve(nonlinearFun,s1.q[0,:],full_output=1)
+
+
+        Yguess=np.hstack((y1guess,y2guess))
+        return Yguess
+
+    def nonlinearFunctionBEuler(self,y,state):
+        r"""
+        Computes the nonlinear function for the backward Euler scheme.
+        """
+        self.upwind = 1
+        deltaq = self.dq(state)
+
+
+        # Return the nonlinear vector-valued function
+        return y[:]-deltaq[0,:]-state.q[0,:]
+
+    
+    def nonlinearFunctionDwrk(self,y,state):
+        r"""
+        Computes the nonlinear function for the downwind scheme.
+        """
+        mx = state.grid.num_cells[0]
+        num_eqn=state.num_eqn
+        r=self.r
+
+        self._rk_stages[0].q = y[0:num_eqn*mx]
+        self._rk_stages[0].t = state.t+(r-2.)/r*self.dt
+        self.upwind = 1
+        deltaq = self.dq(self._rk_stages[0])
+
+        self._rk_stages[0].q = y[num_eqn*mx:]
+        self._rk_stages[0].t = state.t+(r-1.)/r*self.dt
+        self.upwind = 0
+        deltaq_DW = -self.dq(self._rk_stages[0])
+
+
+        rhs=y.copy()
+        rhs[0:num_eqn*mx] = 2./(r*(r-2))*state.q[0,:] + (2./r)*(y[0:num_eqn*mx] + deltaq/r) \
+                  + (r**2-4*r+2)/(r*(r-2))*(y[num_eqn*mx:] + deltaq_DW/r)
+        rhs[num_eqn*mx:] = y[0:num_eqn*mx] + deltaq/r
+
+        return y-rhs
+
+
+
+
+
+#############################################################################
+#############################################################################
+
 
     def set_mthlim(self):
         self._mthlim = self.limiters
@@ -425,6 +523,7 @@ class SharpClawSolver(Solver):
         elif self.time_integrator == 'SSP43':  nregisters=2
         elif self.time_integrator == 'SSP104': nregisters=3
         elif self.time_integrator == 'DWSSP105': nregisters=10
+        elif self.time_integrator == 'Implicit': nregisters=2
 
         
 
