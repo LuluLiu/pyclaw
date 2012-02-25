@@ -8,7 +8,6 @@ Module containing SharpClaw solvers for PyClaw/PetClaw
 # Solver superclass
 from pyclaw.solver import Solver, CFLError
 
-from pyclaw.solver import Solver, CFLError
 from scipy.optimize import fsolve
 from scipy.optimize.nonlin import newton_krylov
 import numpy as np
